@@ -1,0 +1,30 @@
+class anomaly:
+
+    def __init__(self):
+        return self
+
+    def get_multi_gauss(X):
+
+       cov_mat = (X - X.mean(0)).T.dot(X - X.mean(0)) / X.shape[0]
+
+       k = cov_mat.shape[0]
+       
+       def multi_gauss(x):
+           
+           value = np.zeros(x.shape[0])
+
+           cov_mat_inv = np.linalg.inv(cov_mat)
+
+           cov_mat_det = np.linalg.det(cov_mat)
+           
+           for i,xval in enumerate(x):
+               
+               val = np.exp(-0.5*(xval - X.mean(0)).dot(cov_mat_inv).dot(xval - X.mean(0)))
+               val = 1 / np.sqrt((2 * np.pi)**k * cov_mat_det) * val
+               value[i] = val           
+
+           return value
+ 
+       self.multi_gauss = multi_gauss
+
+       return self

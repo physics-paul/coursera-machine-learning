@@ -1,0 +1,11 @@
+import numpy as np
+from scipy import io
+import matplotlib.pyplot as plt
+from pdb import set_trace as pb
+mat1  = io.loadmat('ex8data1.mat')
+X = mat1['X']
+###
+
+cov_mat = (X - X.mean(0)).T.dot(X - X.mean(0))
+
+

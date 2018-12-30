@@ -1,0 +1,134 @@
+"""*********************************************************
+
+NAME:     ex4
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D
+
+VERSION:  1. Neural Networks
+
+*********************************************************"""
+
+from sklearn.linear_model import LogisticRegression
+from pdb import set_trace as pb
+from scipy import io
+from PIL import Image as im
+import numpy as np
+
+### Get data ###############################################
+
+# There are 5000 training examples.
+# Each training example is a 20x20 pixel image of the digit.
+# Each pixel is represented by a number indicating
+# greyscale intensity.
+# This 20x20 grid of pixels is unrolled into a
+# 400-dimensional vector.
+# Then X is a 5000x400 matrix.
+# Y represents the labels for each X training matrix.
+
+mat = io.loadmat('ex4data1.mat')
+X   = mat['X']
+Y   = mat['y']
+Y   = Y.reshape(Y.shape[0])
+m   = X.shape[0]
+
+### Get theta network parameters ###########################
+
+# We are given a set of network parameters which have
+# already been trained.
+# The parameters have dimensions which are sized for a
+# neural network with 25 units in the second layer
+# and 10 output units.
+
+mat      = io.loadmat('ex4weights.mat')
+theta1   = mat['Theta1']
+theta2   = mat['Theta2']
+
+### 1.1 Visualizing the data ###############################
+
+# grab some random training data.
+
+random_pos = np.random.choice(len(X),100,replace=False)
+
+# now resize the array into a 10x10 grid of digits.
+
+leng = (10,10,400)
+image_arry = X[random_pos]
+images = np.reshape(image_arry,leng)
+
+# get the image ready.
+
+all_im = im.new('L', (20 * leng[0],20 * leng[1]))
+
+for i,row in enumerate(images):
+    for j,ima in enumerate(row): 
+    
+        ima = np.reshape(ima,(20,20)).T
+        ima = im.fromarray(ima * 255)
+
+        all_im.paste(ima,(i * 20, j * 20))
+
+all_im.show()
+
+### 1.3 Feedforward and cost function ######################
+
+def activation(X,theta):
+
+    z  = np.dot(X,theta[1:]) + theta[0]
+
+    return 1. / (1. + np.exp(-np.clip(z,-250,250)))
+
+def predict(X,theta1,theta2):
+    
+    hidden_layer = np.zeros((X.shape[0],theta1.shape[0]))
+    output_layer = np.zeros((X.shape[0],theta2.shape[0]))
+
+    for i in range(theta1.shape[0]):
+
+        hidden_layer[:,i] = activation(X,theta1[i])   
+
+    for i in range(theta2.shape[0]):
+
+        output_layer[:,i] = activation(hidden_layer,theta2[i])
+    
+    return output_layer
+
+def cost_unregularized(X,Y,theta1,theta2):
+
+    activate = predict(X,theta1,theta2)
+
+    J = -1 / m * (Y * np.log(activate) + (1-Y) * np.log(1-activate)).sum()
+
+    return J
+
+n_class_labels = np.unique(Y).shape[0]
+Y_exp = np.zeros((Y.shape[0],n_class_labels))
+
+for i,val in enumerate(Y):
+
+    # we need to change the Y outputs into an array, since
+    # our classifier is with many different options, not
+    # only one digit.
+    
+    index = val - 1
+    
+    Y_exp[i][index] = 1
+
+cost_unr = round(cost_unregularized(X,Y_exp,theta1,theta2),6)
+    
+### 1.4 Regularized cost function ##########################
+
+def cost_regularized(X,Y,theta1,theta2,lambd):
+
+    activate = predict(X,theta1,theta2)
+
+    J = -1 / m * (Y * np.log(activate) + (1-Y) * np.log(1-activate)).sum() + 0.5 * lambd / m * ((theta1**2).sum() + (theta2**2).sum())
+
+    return J
+
+cost_reg = round(cost_regularized(X,Y_exp,theta1,theta2,1),6)
+
+### output #################################################
+
+print("   ex4 : 1. Neural Networks")
+print("   Unregularized Cost = {}".format(cost_unr))
+print("   Regularized Cost   = {}".format(cost_reg))

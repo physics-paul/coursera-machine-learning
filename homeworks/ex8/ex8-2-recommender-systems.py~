@@ -1,0 +1,241 @@
+"""*********************************************************
+
+NAME:     ex8
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D
+
+VERSION:  2. Recommender Systems
+
+*********************************************************"""
+
+import numpy as np
+from scipy import io
+import pandas as pd
+from pdb import set_trace as pb
+
+### Get data ###############################################
+
+mat1 = io.loadmat('ex8_movies.mat')
+mat2 = io.loadmat('ex8_movieParams.mat')
+
+Y = mat1['Y']
+R = mat1['R']
+X = mat2['X']
+T = mat2['Theta']
+
+### 2.2.1 Collaborative filtering cost function ############
+
+def cost(X,T,Y,R):   
+
+    J = 0.5 * ((X.dot(T.T) - Y)**2)[R == 1].sum()
+
+    return J
+
+init_cost = cost(X[:5,:3],T[:4,:3],Y[:5,:4],R[:5,:4])
+
+### 2.2.2 Collaborative filtering gradient #################
+
+def dcost(X,T,Y,R):
+
+    dx_ = ((X.dot(T.T) - Y) * R)   .dot(T)
+    dw_ = ((X.dot(T.T) - Y) * R).T .dot(X)
+
+    return dx_,dw_
+
+### 2.2.3 Regularized cost function ########################
+
+def cost(X,T,Y,R,lambd):   
+
+    J = 0.5 * ((X.dot(T.T) - Y)**2)[R == 1].sum() +0.5 * lambd * ((T**2).sum() + (X**2).sum())
+
+    return J
+
+### 2.2.4 Regularized gradient #############################
+
+def dcost(X,Y,T,R):
+
+    dx_ = ((X.dot(T.T) - Y) * R)   .dot(T) + lambd * X
+    dw_ = ((X.dot(T.T) - Y) * R).T .dot(X) + lambd * T
+
+    return dx_,dw_
+
+### 2.3 Learning movie recommendations #####################
+
+############################################################
+###         CLASS : COLLABORATIVE FILTERING              ###
+############################################################
+
+class collaborative_filtering:
+    """Collaborative filtering cost function.
+    Parameters
+    ----------
+    n_features : int
+      Number of features in describing the movie.
+    eta : float
+      Learing rate (between 0.0 and 4.0).
+    lambd : float
+      Regularization parameter (between 0.0 and 100.0).
+    n_iter : int
+      Number of passes over the training set.
+    
+    Attributes
+    ----------
+    x_ : 2d-array, shape = [n_movies,n_features]
+      Attributes for each movie, where n_movies is the number of movies, and n_features is the number of features.
+    w_ : 2d-array, shape = [n_users,n_features]
+      Attributes for each movie, where n_users is the number of users, and n_features is the number of features.
+    y_ : 2d-array, shape = [n_movies,n_users]
+      Ratings for each user on each movie, where n_movies is the number of movies, and n_users is the number of features.
+    r_ : 2d-array, shape = [n_movies,n_users]
+      Identifier of whether a user has rated a movie or not; 1 if rated and 0 if not rated.
+    cost_ : list
+      Linear regression cost function value in each epoc.
+
+    """
+    
+    def __init__(self,n_features=10,eta=0.0001,lambd=0.0,n_iter=500):
+
+        print("")
+        print("   COLLABORATIVE FILTERING ALGORITHM INITIALIZED")
+        print("   CREATED BY : PAUL SANDERS")
+        print("")
+
+        self.n_features = n_features
+        self.eta        = eta
+        self.lambd      = lambd
+        self.n_iter     = n_iter
+        
+    def fit(self,Y,R,Xi=0,Ti=0):
+        """Fit training data.
+        
+        Y : 2d-array, shape = [n_movies,n_users]
+          Ratings for each user on each movie, where n_movies is the number of movies, and n_users is the number of features.
+        R : 2d-array, shape = [n_movies,n_users]
+          Identifier of whether a user has rated a movie or not; 1 if rated and 0 if not rated.
+
+        Returns
+        -------
+        self : object
+
+        """
+        
+        self.Y = Y
+        self.R = R
+        
+        n_movies = Y.shape[0]
+        n_users  = Y.shape[1]
+
+        if isinstance(Xi,np.ndarray):
+            self.x_ = Xi
+            self.w_ = Ti
+        else:
+            self.x_ = np.random.normal(loc=0.5,scale=1.0,size=(n_movies,self.n_features))
+            self.w_ = np.random.normal(loc=0.5,scale=1.0,size=(n_users,self.n_features))
+
+        self.cost_ = []
+
+        for i in range(self.n_iter):
+
+            print('   {}% complete.'.format(round((i+1)/self.n_iter*100,2)),end='\r')
+            
+            dx_,dw_ = self.dcost(self.x_,self.w_,Y,R,self.lambd)
+            self.x_ += self.eta * dx_
+            self.w_ += self.eta * dw_
+            self.cost_.append(self.cost(self.x_,self.w_,Y,R,self.lambd))
+        
+    def cost(self,X,T,Y,R,lambd):
+        """Compute cost"""
+        
+        J = 0.5 * ((X.dot(T.T) - Y)**2)[R == 1].sum() +0.5 * lambd * ((T**2).sum() + (X**2).sum())
+        
+        return J
+
+    def dcost(self,X,T,Y,R,lambd):
+        """Compute cost gradient"""
+        
+        dx_ = ((Y - X.dot(T.T)) * R)   .dot(T) - lambd * X
+        dw_ = ((Y - X.dot(T.T)) * R).T .dot(X) - lambd * T
+        
+        return dx_,dw_
+
+    def activation(self,xi,wj):
+        """Compute linear activation"""
+
+        z = np.dot(xi,wj)
+        
+        return z
+    
+    def predict(self,xi,wj):
+        """Return ratings prediction"""
+
+        pred = self.activation(xi,wj)   
+
+        return pred
+    
+    def add_review(self,file):
+        """Upload a user-defined review"""
+
+        print('   Considering your reviews...')
+        print('')
+
+        self.mat1 = pd.read_csv(file)
+        
+        self.user_name = mat1.columns[-1]
+
+        Y_add = np.zeros((Y.shape[0],len(mat1.columns[3:])))
+        R_add = np.zeros(Y_add.shape)
+
+        R_val = mat1.iloc[:,3:].notnull()
+
+        for user in range(R_val.shape[1]):
+    
+            Y_num = mat1['Number'][R_val.iloc[:,user]] - 1
+            Y_val = mat1.iloc[:,3+user][R_val.iloc[:,user]]
+            Y_add[Y_num,user] = Y_val
+            R_add[Y_num,user] = 1
+        
+        self.y_ = np.append(self.Y,Y_add,axis=1)
+        self.r_ = np.append(self.R,R_add,axis=1)
+        
+        t_add   = np.ones((Y_add.shape[1],self.n_features))
+
+        self.w_ = np.append(self.w_,t_add,axis=0)
+
+        self.n_iter = 100
+        
+        self.fit(self.y_,self.r_,Xi=self.x_,Ti=self.w_)
+
+    def get_recommendation(self):
+
+        self.recommend_val = np.round(np.sort(self.x_.dot(self.w_[-1]))[::-1][:8],3)
+        self.recommend_mov = self.x_.dot(self.w_[-1]).argsort()[::-1][:8]
+        self.recommend_mov = [self.mat1['Movie'][self.mat1['Number'] == rec].values[0] for rec in cf.recommend_mov]
+        
+        print('')
+        print('\n   Based on our thorough analysis {}...'.format(cf.user_name))
+        print('   We suggest you watch :')
+
+        for i,mov in enumerate(cf.recommend_mov):
+            print('   Predicted rating {} for movie {}'.format(cf.recommend_val[i],mov))
+
+############################################################
+#                                                          #
+############################################################
+
+cf = collaborative_filtering()
+
+print('   Learning the initial array...')
+print('   Please be patient...')
+print('')
+
+cf.fit(Y,R)
+
+print('   Initialization complete.')
+print('')
+
+### 2.3.1 Recommendations ##################################
+
+cf.add_review('movie_ratings.csv')
+cf.get_recommendation()
+
+############################################################

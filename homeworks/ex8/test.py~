@@ -1,0 +1,125 @@
+"""*********************************************************
+
+NAME:     ex8
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D
+
+VERSION:  1. Anomaly detection
+
+*********************************************************"""
+
+import numpy as np
+from scipy import io
+import matplotlib.pyplot as plt
+from pdb import set_trace as pb
+
+
+### Get data ###############################################
+
+# mat1  = io.loadmat('ex8data1.mat')
+
+# X = mat1['X']
+# y = mat1['yval'].ravel()
+
+### 1.1 Gaussian distribution ##############################
+
+def multi_gauss(x,mu,sigma):
+    gauss = 1 
+    
+    for i in range(Xmu.shape[0]):
+        
+        gauss *= 1 / np.sqrt(2 * np.pi * sigma[i]**2) * np.exp(-(x[:,i] - mu[i])**2 / (2 * sigma[i]**2))
+        
+    return gauss
+
+### 1.2 Estimating parameters for a Gaussian ###############
+
+# Xmu  = X.mean(0)
+# Xstd = X.std(0)
+
+### output #################################################
+
+# x_plt = np.linspace(0,30,100)
+# y_plt = np.linspace(0,30,100)
+
+# x_plt,y_plt = np.meshgrid(x_plt,y_plt)
+# z_plt = multi_gauss(x_plt,Xmu,Xstd)
+ 
+# plt.contour(x_plt,y_plt,z_plt,6)
+# plt.scatter(X[:,0],X[:,1],marker='x')
+# plt.show()
+
+### 1.3 Selecting the threshold, epsilon ###################
+
+# predict = multi_gauss(X,Xmu,Xstd)
+
+# epsilon = np.geomspace(predict.min(),predict.max(),100)
+
+# pb()
+
+# f1 = np.zeros(epsilon.shape[0])
+
+# for i,eps in enumerate(epsilon):
+
+#     tp = ((predict <= eps) * (y == 1)).sum()
+#     fp = ((predict <= eps) * (y == 0)).sum()
+#     fn = ((predict >= eps) * (y == 1)).sum()
+
+#     prec = tp / (tp + fp)
+#     rec  = tp / (tp + fn)
+
+#     f1[i] = 2 * prec * rec / (prec + rec)
+
+# epsilon_min = epsilon[f1.argmax()]
+
+# outliers = X[predict <= epsilon_min]
+# negative = X[predict >  epsilon_min]
+
+# ### output #################################################
+
+# x_plt = np.linspace(0,30,100)
+# y_plt = np.linspace(0,30,100)
+
+# x_plt,y_plt = np.meshgrid(x_plt,y_plt)
+# z_plt = np.array([x_plt.ravel(),y_plt.ravel()]).T
+# z_plt = np.resize(multi_gauss(z_plt,Xmu,Xstd*3),x_plt.shape)
+ 
+# plt.contour(x_plt,y_plt,z_plt,6)
+# plt.scatter(outliers[:,0],outliers[:,1],marker='o')
+# plt.scatter(negative[:,0],negative[:,1],marker='x')
+# plt.show()
+
+# ### 1.4 High dimensional dataset ###########################
+
+mat2  = io.loadmat('ex8data2.mat')
+
+X    = mat2['X']
+Xval = mat2['Xval']
+yval = mat2['yval'].ravel()
+
+Xmu  = X.mean(0)
+Xstd = X.std(0)
+
+predict = multi_gauss(Xval,Xmu,Xstd)
+
+epsilon = np.geomspace(10**-19,predict.max(),10000)
+
+f1 = np.zeros(epsilon.shape[0])
+
+for i,eps in enumerate(epsilon):
+    
+    tp = ((predict < eps)  * (yval == 1)).sum()
+    fp = ((predict < eps)  * (yval == 0)).sum()
+    fn = ((predict >= eps) * (yval == 1)).sum()
+    
+    prec = tp / (tp + fp)
+    rec  = tp / (tp + fn)
+
+    f1[i] = 2 * prec * rec / (prec + rec)
+
+epsilon_min = epsilon[f1.argmax()]
+
+predict = multi_gauss(X,Xmu,Xstd)
+
+outliers = X[predict <  epsilon_min] 
+negative = X[predict >= epsilon_min]

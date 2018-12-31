@@ -1,0 +1,114 @@
+"""*********************************************************
+
+NAME:     ex3
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D
+
+VERSION:  1. Multi-class Classification
+
+*********************************************************"""
+
+from sklearn.linear_model import LogisticRegression
+from pdb import set_trace as pb
+from scipy import io
+from PIL import Image as im
+import numpy as np
+
+### Get data ###############################################
+
+# There are 5000 training examples.
+# Each training example is a 20x20 pixel image of the digit.
+# Each pixel is represented by a number indicating
+# greyscale intensity.
+# This 20x20 grid of pixels is unrolled into a
+# 400-dimensional vector.
+# Then X is a 5000x400 matrix.
+# Y represents the labels for each X training matrix.
+
+mat = io.loadmat('ex3data1.mat')
+X   = mat['X']
+Y   = mat['y']
+Y   = Y.reshape(Y.shape[0])
+m   = X.shape[0]
+N   = X.shape[-1]
+
+### 1.2 Visualizing the data ###############################
+
+# grab some random training data.
+
+random_pos = np.random.choice(len(X),100,replace=False)
+
+# now resize the array into a 10x10 grid of digits.
+
+leng = (10,10,400)
+image_arry = X[random_pos]
+images = np.reshape(image_arry,leng)
+
+# get the image ready.
+
+all_im = im.new('L', (20 * leng[0],20 * leng[1]))
+
+for i,row in enumerate(images):
+    for j,ima in enumerate(row): 
+    
+        ima = np.reshape(ima,(20,20)).T
+        ima = im.fromarray(ima * 255)
+
+        all_im.paste(ima,(i * 20, j * 20))
+
+### 1.3.3 Vectorizing regularized logistic regression ####
+
+def activation(X,theta):
+
+    z  = np.dot(X,theta[1:]) + theta[0]
+
+    return 1. / (1. + np.exp(-np.clip(z,-250,250)))
+
+def cost(theta,lambd):
+
+    activate = activation(X,theta)
+    
+    J = -1 / m * (Y.dot(np.log(activate)) + (1-Y).dot(np.log(1-activate))) + 0.5 * lambd / m * theta[1:].dot(theta[1:])
+
+    return J
+
+def dcost(theta,lambd):
+    
+    activate = activation(X,theta)
+
+    dJ0 = 1 / m * (activate - Y).sum()
+
+    dJ  = 1 / m * X.T.dot(activate - Y) + lambd / m * theta[1:]
+    
+    return dJ
+
+### 1.4 One-vs-all Classification ##########################
+
+Y_OVA = np.where(Y == 10,1,0)
+
+class_label = np.unique(Y)
+theta = np.zeros((len(class_label),N+1))
+
+for i in np.unique(Y):
+    Y_OVA = np.where(Y == i,1,0)
+
+    lr = LogisticRegression(solver='lbfgs',max_iter=10000,tol=0.01,multi_class='auto')
+
+    lr.fit(X,Y_OVA)
+
+    theta[i-1] = np.append(lr.intercept_,lr.coef_)
+
+### 1.4.1 One-vs-all Prediction ############################
+
+guess = np.zeros((m))
+
+for i in range(m):
+
+    guess[i] = np.argmax([activation(X[i],theta[j-1]) for j in class_label])+1
+
+correct = round(sum(guess == Y) / m * 100,1)
+
+### output #################################################
+
+print("   ex3 : 1. Multi-class Classification")
+print("   Percentage of correct classifications = {}%".format(correct))

@@ -1,0 +1,40 @@
+"""*********************************************************
+
+NAME:     ex5
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D
+
+VERSION:  1. Regularized Linear Regression
+
+*********************************************************"""
+
+import numpy as np
+from scipy import io
+import matplotlib.pyplot as plt
+
+### Get data ###############################################
+
+# There are 5000 training examples.
+# Each training example is a 20x20 pixel image of the digit.
+# Each pixel is represented by a number indicating
+# greyscale intensity.
+# This 20x20 grid of pixels is unrolled into a
+# 400-dimensional vector.
+# Then X is a 5000x400 matrix.
+# Y represents the labels for each X training matrix.
+
+mat1 = io.loadmat('ex5data1.mat')
+X    = mat1['X']
+Y    = mat1['y']
+Xval = mat1['Xval']
+Yval = mat1['yval']
+Xtes = mat1['Xtest']
+Ytes = mat1['ytest']
+
+### 1.1 Visualizing the dataset ############################
+
+X_plt = X.ravel()
+Y_plt = Y.ravel()
+
+plt.scatter(X_plt,Y_plt,marker='x')
+plt.show()

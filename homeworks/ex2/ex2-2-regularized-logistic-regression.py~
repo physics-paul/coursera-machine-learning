@@ -1,0 +1,133 @@
+"""*********************************************************
+
+NAME:     ex2
+
+AUTHOR:   Paul Haddon Sanders IV, Ph.D.
+
+VERSION:  2. Regularized logistic regression
+
+*********************************************************"""
+
+from sklearn.linear_model import LogisticRegression
+import numpy as np
+import pandas as pd
+from pdb import set_trace as pb
+import matplotlib.pyplot as plt
+
+### Get data ###############################################
+
+data   = pd.read_csv("ex2data2.txt",header=None)
+x_vals = data.iloc[:,:-1].values
+m      = x_vals.shape[0]
+
+x_std  = np.copy(x_vals)
+mean   = [x_vals[:,i].mean() for i in range(x_vals.shape[-1])] 
+std    = [x_vals[:,i].std() for i in range(x_vals.shape[-1])]
+x_std  = (x_vals - mean) / std
+
+y_vals = data.iloc[:,-1].values
+
+### 2.1 Visualizing the data ###############################
+
+plt.subplot(221)
+plt.scatter(*x_vals[y_vals == 0].T,marker='o',c='g',label=" y = 0")
+plt.scatter(*x_vals[y_vals == 1].T,marker='+',c='b',label=" y = 1")
+plt.xlabel('Microchip Test 1')
+plt.ylabel('Microchip Test 2')
+plt.title('Microchip Data')
+
+### 2.2 Feature mapping ####################################
+
+def feature_map(x_vals):
+
+    expon = [[i,j] for i in range(7) for j in range(7) if 1 <= i + j <= 6]
+    
+    expon.sort(key=lambda x : sum(x))
+    
+    features = np.zeros((x_vals.shape[0],28))
+
+    features[:,0] = 1
+    
+    for i in range(x_vals.shape[0]):
+
+        for j,exp in enumerate(expon):
+            
+            features[i,j+1] = x_vals[i,0]**exp[0] * x_vals[i,1]**exp[1]
+            
+    return features
+
+x_vals_map = feature_map(x_vals)
+
+### 2.3 Cost function and gradient #########################
+
+lamd = 1.0
+
+def activation(x_vals,theta):
+
+    z  = np.dot(x_vals,theta[1:]) + theta[0]
+
+    return 1. / (1. + np.exp(-np.clip(z,-250,250)))
+
+def cost(theta):
+
+    activate = activation(x_vals_map,theta)
+    
+    J = -1 / m * (y_vals.dot(np.log(activate)) + (1-y_vals).dot(np.log(1-activate))) + 0.5 * lamd / m * theta[1:].dot(theta[1:])
+
+    return J
+
+def dcost(theta,lambd):
+
+    activate = activation(x_vals_map,theta)
+
+    dJ0 = 1 / m * x_vals_map.T.dot(activate - y_vals)
+
+    dJ  = 1 / m * x_vals_map.T.dot(activate - y_vals) + lambd / m * theta[1:]
+    
+    return dJ
+
+theta = np.zeros((1 + x_vals_map.shape[-1]))
+initial_cost = round(cost(theta),3)
+
+### 2.3.1 Learning parameters using fminunc ################
+
+lr = LogisticRegression(solver='lbfgs',max_iter=10000,tol=0.001,multi_class='auto')
+lr.fit(x_vals_map,y_vals)
+
+### 2.5 Optional (ungraded) exercises ######################
+
+lambd = [1/100,1,10**8]
+lr = [LogisticRegression(solver='lbfgs',multi_class='auto',C=i) for i in lambd]
+for i in lr:
+    i.fit(x_vals_map,y_vals)
+
+### output #################################################
+
+print(" ex2 : 2. Regularized logistic regression")
+print(" initial cost = {}".format(initial_cost))
+
+min_vals = np.array([[x_vals[:,i].min() - 1,x_vals[:,i].max() + 1] for i in [0,1]])
+x_init,y_init = np.meshgrid(*list(map(lambda i : np.arange(x_vals[:,i].min() - 1,x_vals[:,i].max() + 1,0.02),(0,1))))
+x_plot = np.array([x_init.ravel(),y_init.ravel()])
+x_plot_map = feature_map(x_plot.T)
+
+for i,fun in enumerate(lr):
+    
+    plot3  = plt.subplot(222 + i)
+    z_plot = fun.predict(x_plot_map)
+    z_plot = z_plot.reshape(x_init.shape)
+
+    plt.contourf(x_init,y_init,z_plot)
+    plt.scatter(*x_vals[y_vals == 0].T,marker='o',c='g',label=" y = 0")
+    plt.scatter(*x_vals[y_vals == 1].T,marker='+',c='b',label=" y = 1")
+
+    plt.xlabel('Microchip Test 1')
+    plt.ylabel('Microchip Test 2')
+    plt.xlim([-1,1.5])
+    plt.ylim([-0.8,1.2])
+    plt.title('lambda = {}'.format(lambd[i]))
+    
+plt.tight_layout()
+plt.show()
+
+############################################################
